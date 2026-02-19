@@ -21,6 +21,12 @@ from bidict import bidict
 from larpix import Packet_v2, Packet_v3, TriggerPacket, SyncPacket, TimestampPacket
 from . import message as pm
 
+import os
+
+_DEBUG_ZMQ = os.getenv("LARPIX_PACMAN_MSG_DEBUG", "0") not in ("0", "", "false", "False", "no", "No")
+_DEBUG_MAX_BYTES = int(os.getenv("LARPIX_PACMAN_MSG_DEBUG_MAX", "192"))
+
+
 _use_pkt_version = 2
 _pkt_versions = {
     2: Packet_v2,
@@ -200,28 +206,87 @@ def parse_word(msg_type, word):
 
     return (wtype,) + tuple(unpacked[1:])
 
-
 def format_msg(msg_type, msg_words):
-    '''
-    ``msg_words`` should be a list of tuples that can be unpacked and passed
-    into ``format_word``.
-    '''
     bytestream = format_header(msg_type, len(msg_words))
     for msg_word in msg_words:
         bytestream += format_word(msg_type, *msg_word)
+
+    if _DEBUG_ZMQ:
+        # Extract header fields explicitly
+        header_tuple = pm.unpack_header(bytestream[:HEADER_LEN])
+        header_dict = pm.parse_header(header_tuple)
+
+        ts = header_dict['timestamp']
+        n_words = header_dict['n_bytes'] // WORD_LEN
+
+        print("\n[pacman_msg_format] TX", msg_type)
+        print("  header:")
+        print(f"    timestamp (64-bit) = {ts}")
+        print(f"    timestamp (hex)    = 0x{ts:016x}")
+        print(f"    words              = {n_words}")
+        print(f"  raw ({len(bytestream)}B): {bytestream.hex()}")
+
     return bytestream
 
-
 def parse_msg(msg):
-    '''
-    returns a tuple of::
+    if _DEBUG_ZMQ:
+        header_tuple = pm.unpack_header(msg[:HEADER_LEN])
+        header_dict = pm.parse_header(header_tuple)
 
-        (<header data>, [<word 0 data>, ...])
-    '''
+        ts = header_dict['timestamp']
+        n_words = header_dict['n_bytes'] // WORD_LEN
+
+        print("\n[pacman_msg_format] RX")
+        print("  header:")
+        print(f"    msg_type           = {header_dict['msg_type']}")
+        print(f"    timestamp (64-bit) = {ts}")
+        print(f"    timestamp (hex)    = 0x{ts:016x}")
+        print(f"    words              = {n_words}")
+        print(f"  raw ({len(msg)}B): {msg.hex()}")
+
     header = parse_header(msg)
     words = list()
     for idx in range(HEADER_LEN, len(msg), WORD_LEN):
         words.append(parse_word(header[0], msg[idx:idx + WORD_LEN]))
+
+    if _DEBUG_ZMQ:
+        print("  decoded words:")
+        for w in words:
+            print("   ", w)
+
+            # --- NEW: decode LArPix payload if DATA ---
+            if w[0] == 'DATA':
+                io_channel = w[1]
+                pacman_ts = w[2]
+                payload_bytes = w[3]
+
+                try:
+                    pkt = _pkt_versions[_use_pkt_version](payload_bytes)
+
+                    print("      ↳ LArPix packet decode:")
+                    print(f"         io_channel        = {io_channel}")
+                    print(f"         pacman_timestamp  = {pacman_ts}")
+                    print(f"         payload_hex       = {payload_bytes.hex()}")
+
+                    # chip id
+                    if hasattr(pkt, "chip_id"):
+                        print(f"         chip_id           = {pkt.chip_id}")
+
+                    # channel id
+                    if hasattr(pkt, "channel_id"):
+                        print(f"         channel_id        = {pkt.channel_id}")
+
+                    # packet type
+                    if hasattr(pkt, "packet_type"):
+                        print(f"         packet_type       = {pkt.packet_type}")
+
+                    # ASIC timestamp (if exists)
+                    if hasattr(pkt, "timestamp"):
+                        print(f"         asic_timestamp    = {pkt.timestamp}")
+
+                except Exception as e:
+                    print(f"      ↳ payload decode failed: {e}")
+
     return header, words
 
 
