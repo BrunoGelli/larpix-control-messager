@@ -434,7 +434,7 @@ dtypes['2.1'] = dtypes['2.0'].copy() # compatible with v2 packets and timestamp 
 dtypes['2.1']['packets'].append(('first_packet','u1'))
 dtypes['2.2'] = dtypes['2.1'].copy() # compatible with v2 packets, timestamp packets, sync packets, and trigger packets only
 dtypes['2.3'] = dtypes['2.2'].copy() # compatible with v2 packets, timestamp packets, sync packets, and trigger packets only
-dtypes['2.3']['packets'].append(('receipt_timestamp','u4'))
+dtypes['2.3']['packets'].append(('receipt_timestamp','u8'))
 dtypes['2.4'] = dtypes['2.3'].copy() # compatible with v2 packets, timestamp packets, sync packets, and trigger packets only
 dtypes['2.4']['configs'] = [
     ('timestamp','u8'),
@@ -467,7 +467,7 @@ dtypes['3.0'] = { # compatible with v3 packets and timestamp packets only
                 ('counter','u4'),
                 ('fifo_diagnostics_enabled','u1'),
                 ('first_packet','u1'),
-                ('receipt_timestamp','u4'),
+                ('receipt_timestamp','u8'),
                 ('reset_sample_flag', 'u1'),
                 ('cds_flag', 'u1')
                 ],

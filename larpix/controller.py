@@ -1119,6 +1119,8 @@ class Controller(object):
                 pass
             one_chip_packets = chip.get_configuration_write_packets(registers)
             packets.extend(one_chip_packets)
+            #print("waiting 2s")
+            #time.sleep(2)
         already_listening = False
         if self.io:
             already_listening = self.io.is_listening
