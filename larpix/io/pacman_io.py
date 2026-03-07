@@ -64,11 +64,12 @@ class PACMAN_IO(IO):
     disable_packet_parsing = False
 
     _base_ctrl_reg = 0x10
-    _clk_ctrl_reg = 0x1010
-    _sw_reset_cycles_reg = 0x1014
-    _channel_offset = 0x2000
+    _clk_ctrl_reg = 0x00101010
+    _sw_reset_cycles_reg = 0x00101014
+    _channel_offset = 0x00102000
     _channel_size = 0x1000
     _uart_clock_ratio_offset = 0x10
+#   new i2c addresses are in the form:  0x0020 0000, 0x00200001 - Bruno and Mike (06/03/2026)
     _vddd_dac_reg = 0x24001
     _vdda_dac_reg = 0x24011
     _vddd_adc_reg = 0x24032
